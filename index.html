@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MORPHOBOT - Hybrid Rover/Drone Control Station</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00d2ff">
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --secondary: #d946ef;
+            --bg-dark: #020617;
+            --bg-panel: #020617cc;
+            --success: #00ff88;
+            --warning: #ffaa00;
+            --danger: #ff4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: black;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ================= HEADER ================= */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: var(--bg-dark);
+            border-bottom: 2px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .logo span {
+            background: var(--primary);
+            color: black;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .mode-indicator {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* ================= BUTTONS ================= */
+        .pill-btn {
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mode-rover {
+            background: var(--primary);
+            color: black;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .mode-drone {
+            background: var(--secondary);
+            color: white;
+            box-shadow: 0 0 15px var(--secondary);
+        }
+
+        .auto-on {
+            background: var(--success);
+            color: black;
+            box-shadow: 0 0 15px var(--success);
+        }
+
+        .auto-off {
+            background: var(--warning);
+            color: black;
+            box-shadow: 0 0 15px var(--warning);
+        }
+
+        .power-on {
+            background: var(--success);
+            color: black;
+        }
+
+        .power-off {
+            background: var(--danger);
+            color: white;
+        }
+
+        .emergency-btn {
+            background: var(--danger);
+            color: white;
+            padding: 8px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            border: 2px solid white;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* ================= VIDEO BACKGROUND ================= */
+        .video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #videoStream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 1.5rem;
+            z-index: 2;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+
+        .drone-only {
+            display: none;
+        }
+
+        .btn-hover {
+            background: orange !important;
+        }
+
+        .btn-home {
+            background: var(--primary) !important;
+        }
+
+        .btn-mini {
+            padding: 6px 15px !important;
+            font-size: 0.7rem !important;
+        }
+
+        /* ================= CONNECTION STATUS ================= */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            transition: all 0.3s;
+        }
+
+        .status-dot.connected {
+            background: #00ff88;
+            box-shadow: 0 0 15px #00ff88;
+        }
+
+        /* ================= HUD LAYOUT ================= */
+        .hud-container {
+            position: fixed;
+            top: 74px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .hud-box {
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 140px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .hud-title {
+            font-size: 10px;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .hud-unit {
+            font-size: 10px;
+            color: var(--primary);
+            margin-left: 2px;
+        }
+
+        .hud-sub-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        /* ================= COMMAND BAR ================= */
+        .command-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            padding: 12px 25px;
+            border-radius: 50px;
+            border: 1px solid var(--primary);
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        /* ================= JOYSTICK AREA ================= */
+        .joystick-area {
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 120px;
+            transition: all 0.3s;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .joystick-area.center-mode {
+            gap: 0;
+        }
+
+        .joystick-base {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--primary);
+            position: relative;
+            touch-action: none;
+            pointer-events: auto;
+        }
+
+        .joystick-area.center-mode {
+            gap: 0;
+        }
+
+        .joystick-base {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--primary);
+            position: relative;
+            touch-action: none;
+            transition: all 0.3s;
+        }
+
+        .joystick-base::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .joystick-stick {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            border-radius: 50%;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--primary);
+            transition: box-shadow 0.3s;
+        }
+
+        .joystick-label {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* ================= MAP CONTAINER ================= */
+        .map-container {
+            height: 200px;
+            background: #111;
+            border-radius: 10px;
+            border: 1px solid var(--primary);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .map-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #1a1a1a 25%, #222 25%, #222 50%, #1a1a1a 50%, #1a1a1a 75%, #222 75%);
+            background-size: 20px 20px;
+        }
+
+        .robot-position {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: var(--primary);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        /* ================= LOGS ================= */
+        .log-container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 8px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            border: 1px solid var(--primary);
+        }
+
+        .log-entry {
+            color: #aaa;
+            border-bottom: 1px solid #222;
+            padding: 2px 0;
+        }
+
+        .log-entry.warn {
+            color: var(--warning);
+        }
+
+        .log-entry.error {
+            color: var(--danger);
+        }
+
+        .log-entry.info {
+            color: var(--primary);
+        }
+
+        /* ================= MODAL ================= */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--bg-dark);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid var(--primary);
+            width: 350px;
+            text-align: center;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid var(--primary);
+            background: #111;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .connect-btn {
+            background: var(--primary);
+            color: black;
+            flex: 2;
+        }
+
+        .cancel-btn {
+            background: var(--danger);
+            color: white;
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ================= HEADER ================= -->
+    <div class="header">
+        <div class="logo">
+            MORPHOBOT
+            <span>v2.0</span>
+        </div>
+
+        <div class="mode-indicator">
+            <button id="modeBtn" class="pill-btn mode-rover" onclick="toggleMode()">ROVER MODE</button>
+            <button id="autoBtn" class="pill-btn auto-on" onclick="toggleAuto()">AUTONOMOUS</button>
+            <button id="powerBtn" class="pill-btn power-off" onclick="togglePower()">OFF</button>
+            <button class="emergency-btn" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
+        </div>
+
+        <div class="connection-status">
+            <div class="status-dot" id="connDot"></div>
+            <span id="connStatus">Disconnected</span>
+            <button class="pill-btn mode-rover" onclick="openConnect()" style="margin-left: 10px;">Connect</button>
+        </div>
+    </div>
+
+    <!-- ================= FULL SCREEN VIDEO ================= -->
+    <div class="video-container">
+        <video id="videoStream" autoplay muted playsinline></video>
+        <div class="video-overlay" id="videoOverlay">📹 STANDBY - No Video Signal</div>
+    </div>
+
+    <!-- ================= HUD OVERLAY ================= -->
+    <div class="hud-container">
+
+        <!-- LEFT HUD -->
+        <div class="side-panel">
+            <div class="hud-box">
+                <div class="hud-title">VEHICLE STATUS</div>
+                <div class="hud-sub-grid">
+                    <div>
+                        <div class="hud-title" style="font-size:8px">MODE</div>
+                        <div class="hud-value" style="font-size:14px" id="vehicleMode">ROVER</div>
+                    </div>
+                    <div>
+                        <div class="hud-title" style="font-size:8px">ARMED</div>
+                        <div class="hud-value" style="font-size:14px" id="armed">NO</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-box">
+                <div class="hud-title">POWER</div>
+                <div class="hud-value" id="battery">0<span class="hud-unit">%</span></div>
+                <div class="hud-sub-grid">
+                    <div>
+                        <div class="hud-title" style="font-size:8px">TEMP</div>
+                        <div class="hud-value" style="font-size:12px" id="batteryTemp">0<span class="hud-unit">°C</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="hud-title" style="font-size:8px">LOAD</div>
+                        <div class="hud-value" style="font-size:12px" id="power">0<span class="hud-unit">W</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-box">
+                <div class="hud-title">PROPRIOCEPTION</div>
+                <div class="hud-sub-grid">
+                    <div>
+                        <div class="hud-title" style="font-size:8px">SPEED</div>
+                        <div class="hud-value" style="font-size:12px" id="speed">0.0<span class="hud-unit">km/h</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="hud-title" style="font-size:8px">ALT</div>
+                        <div class="hud-value" style="font-size:12px" id="altitude">0.0<span class="hud-unit">m</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-box">
+                <div class="hud-title">NETWORK</div>
+                <div class="hud-sub-grid" style="margin-top:0">
+                    <div>
+                        <div class="hud-title" style="font-size:8px">LATENCY</div>
+                        <div class="hud-value" style="font-size:12px" id="latency">0<span class="hud-unit">ms</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="hud-title" style="font-size:8px">DATA LINK</div>
+                        <div class="hud-value" style="font-size:12px; color:var(--danger)" id="dcStatus">CLOSED</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT HUD -->
+        <div class="side-panel">
+            <div class="hud-box">
+                <div class="hud-title">POSITION (X,Y,Z)</div>
+                <div class="hud-value" style="font-size:14px">
+                    <span id="posX">0.0</span>, <span id="posY">0.0</span>, <span id="posZ">0.0</span>
+                </div>
+            </div>
+
+            <div class="hud-box" style="border-color: var(--secondary)">
+                <div class="hud-title">SERVOS</div>
+                <div class="hud-sub-grid">
+                    <div>
+                        <div class="hud-title" style="font-size:8px">S1</div>
+                        <div class="hud-value" style="font-size:12px" id="servo1">90°</div>
+                    </div>
+                    <div>
+                        <div class="hud-title" style="font-size:8px">S2</div>
+                        <div class="hud-value" style="font-size:12px" id="servo2">90°</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-box">
+                <div class="hud-title">SYSTEM HEALTH</div>
+                <div class="hud-sub-grid">
+                    <div>
+                        <div class="hud-title" style="font-size:8px">CPU</div>
+                        <div class="hud-value" style="font-size:12px" id="cpu">0%</div>
+                    </div>
+                    <div>
+                        <div class="hud-title" style="font-size:8px">MEM</div>
+                        <div class="hud-value" style="font-size:12px" id="memory">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LOGS INSET -->
+            <div class="log-container" id="logContainer" style="width: 250px; height: 120px;">
+                <div class="log-entry info">[SYSTEM] HUD v2.1 Ready</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= COMMAND BAR ================= -->
+    <div class="command-bar">
+        <button class="pill-btn mode-rover btn-mini" onclick="sendCommand('arm')">🔒 ARM</button>
+        <button class="pill-btn power-off btn-mini" onclick="sendCommand('disarm')">🔓 DISARM</button>
+        <button class="pill-btn auto-on drone-only btn-mini" onclick="sendCommand('takeoff')">🛫 TAKEOFF</button>
+        <button class="pill-btn mode-drone drone-only btn-mini" onclick="sendCommand('land')">🛬 LAND</button>
+        <button class="pill-btn drone-only btn-mini btn-hover" onclick="sendCommand('hover')">⏸️ HOVER</button>
+        <button class="pill-btn drone-only btn-mini btn-home" onclick="sendCommand('return')">🏠 HOME</button>
+    </div>
+
+    <!-- ================= JOYSTICKS ================= -->
+    <div class="joystick-area center-mode" id="joystickArea">
+        <div class="joystick-base" id="leftBase">
+            <div class="joystick-stick" id="leftStick"></div>
+            <div class="joystick-label">MOVEMENT</div>
+        </div>
+
+        <div class="joystick-base" id="rightBase" style="display: none;">
+            <div class="joystick-stick" id="rightStick"></div>
+            <div class="joystick-label">YAW / ALT</div>
+        </div>
+    </div>
+
+    <!-- ================= CONNECT MODAL ================= -->
+    <div class="modal" id="connectModal">
+        <div class="modal-content">
+            <h2 style="color: var(--primary); margin-bottom: 20px;">🔌 Connect to Robot</h2>
+            <div style="text-align: left; margin-bottom: 5px; color: var(--primary); font-size: 0.8rem;">SERVER URL / IP
+            </div>
+            <input type="text" id="serverUrl" placeholder="e.g. 127.0.0.1:8080" value="127.0.0.1:8080">
+
+            <div style="text-align: left; margin-bottom: 5px; color: var(--primary); font-size: 0.8rem;">ROBOT ID</div>
+            <input type="text" id="robotId" placeholder="robot-001" value="robot-001">
+
+            <div class="modal-buttons">
+                <button class="connect-btn" onclick="connectRobot()">CONNECT</button>
+                <button class="cancel-btn" onclick="closeConnect()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Replace the existing <script> block with this -->
+    <script>
+        // Register Service Worker for PWA status
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('[PWA] Service Worker Registered'))
+                .catch(err => console.log('[PWA] Service Worker Failed', err));
+        }
+
+        // ================= GLOBAL VARIABLES =================
+        let socket = null;          // Signaling socket
+        let peerConnection = null;
+        let dataChannel = null;
+        let currentMode = "ROVER";
+        let isAuto = true;
+        let isPowerOn = false;
+        let telemetryData = {};
+        let robotId = "robot-001";
+
+        // ================= CONNECTION MANAGEMENT =================
+        function openConnect() {
+            document.getElementById('connectModal').style.display = 'flex';
+        }
+
+        function closeConnect() {
+            document.getElementById('connectModal').style.display = 'none';
+        }
+
+        async function connectRobot() {
+            let serverInput = document.getElementById('serverUrl').value.trim();
+            let server = serverInput.replace(/^(ws|http)s?:\/\//, '').split('/')[0];
+            robotId = document.getElementById('robotId').value.trim();
+            const wsUrl = server.includes(':') ? `ws://${server}` : `ws://${server}:8080`;
+
+            addLog(`[CONN] Connecting to ${wsUrl}...`, 'info');
+
+            if (socket) socket.close();
+            if (peerConnection) peerConnection.close();
+
+            connectSignaling(wsUrl);
+            closeConnect();
+        }
+
+        // ================= SIGNALING & WEBRTC =================
+        function connectSignaling(url) {
+            socket = new WebSocket(url);
+
+            socket.onopen = () => {
+                addLog('[SIGNAL] Connected to ' + url, 'info');
+                socket.send(JSON.stringify({
+                    type: 'join',
+                    role: 'operator',
+                    robotId: robotId
+                }));
+            };
+
+            socket.onclose = () => {
+                updateConnectionStatus(false);
+                addLog('[SIGNAL] Disconnected', 'error');
+            };
+
+            socket.onerror = (error) => {
+                addLog('[SIGNAL] Error joining', 'error');
+            };
+
+            socket.onmessage = async (event) => {
+                const message = JSON.parse(event.data);
+
+                if (message.type === 'operator_connected') {
+                    await initiateWebRTC();
+                } else if (message.type === 'answer') {
+                    if (peerConnection) {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                        addLog('[WEBRTC] Answer received and applied', 'info');
+                    }
+                } else if (message.type === 'iceCandidate') {
+                    if (peerConnection && message.candidate) {
+                        try {
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                        } catch (e) {
+                            console.error('Error adding received ice candidate', e);
+                        }
+                    }
+                } else if (message.type === 'robot_disconnected') {
+                    addLog('[ROBOT] Robot disconnected', 'error');
+                    updateConnectionStatus(false);
+                } else if (message.type === 'error') {
+                    addLog('[SIGNAL] ' + message.message, 'error');
+                }
+            };
+        }
+
+        async function initiateWebRTC() {
+            const configuration = {
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            };
+
+            peerConnection = new RTCPeerConnection(configuration);
+
+            peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
+            // Setup Data Channel (operator creates it)
+            dataChannel = peerConnection.createDataChannel('control');
+            setupDataChannel(dataChannel);
+
+            peerConnection.ontrack = (event) => {
+                console.log('[WEBRTC] ontrack received', event);
+                const video = document.getElementById('videoStream');
+
+                // If streams are provided, use the first one
+                if (event.streams && event.streams.length > 0) {
+                    video.srcObject = event.streams[0];
+                }
+                // Otherwise, create a new stream from the track
+                else if (event.track) {
+                    console.log('[WEBRTC] Creating stream from track:', event.track.kind);
+                    const stream = new MediaStream();
+                    stream.addTrack(event.track);
+                    video.srcObject = stream;
+                }
+
+                // Optional: force play (autoplay should handle it)
+                video.play().catch(e => console.warn('[VIDEO] autoplay failed:', e));
+
+                // Hide overlay
+                const overlay = document.getElementById('videoOverlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 500);
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'iceCandidate',
+                        candidate: event.candidate
+                    }));
+                }
+            };
+
+            peerConnection.onconnectionstatechange = () => {
+                const state = peerConnection.connectionState;
+                addLog('[WEBRTC] State: ' + state, 'info');
+                updateConnectionStatus(state === 'connected');
+            };
+
+            // Create Offer
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            socket.send(JSON.stringify({
+                type: 'offer',
+                offer: offer
+            }));
+
+            addLog('[WEBRTC] Offer sent to robot', 'info');
+        }
+
+        function setupDataChannel(channel) {
+            channel.onopen = () => {
+                addLog('[DATA] Channel opened', 'success');
+                const dcStatus = document.getElementById('dcStatus');
+                if (dcStatus) {
+                    dcStatus.innerText = 'OPEN';
+                    dcStatus.style.color = 'var(--success)';
+                }
+
+                // SYNC INITIAL STATE: Send current UI defaults to Pi
+                addLog('[DATA] Syncing initial state...', 'info');
+                sendCommand('mode', currentMode.toLowerCase());
+                sendCommand('control', isAuto ? 'auto' : 'manual');
+                sendCommand('power', isPowerOn);
+            };
+
+            channel.onclose = () => {
+                addLog('[DATA] Channel closed', 'warn');
+                const dcStatus = document.getElementById('dcStatus');
+                if (dcStatus) {
+                    dcStatus.innerText = 'CLOSED';
+                    dcStatus.style.color = 'var(--danger)';
+                }
+            };
+
+            channel.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleTelemetry(data);
+                } catch (e) {
+                    console.log('Data channel message:', event.data);
+                }
+            };
+        }
+
+        // ================= HANDLE INCOMING TELEMETRY =================
+        function handleTelemetry(data) {
+            telemetryData = data;
+
+            switch (data.type) {
+                case 'pong':
+                    const rtt = Date.now() - data.timestamp;
+                    document.getElementById('latency').innerHTML = `${rtt}<span class="hud-unit">ms</span>`;
+                    break;
+                case 'armed':
+                    document.getElementById('armed').innerText = data.value ? 'YES' : 'NO';
+                    break;
+                case 'mode':
+                    document.getElementById('vehicleMode').innerText = (data.value || '--').toUpperCase();
+                    break;
+                case 'battery':
+                    document.getElementById('battery').innerHTML = `${(data.value || 0).toFixed(0)}<span class="hud-unit">%</span>`;
+                    break;
+                case 'altitude':
+                    document.getElementById('altitude').innerHTML = `${(data.value || 0).toFixed(1)}<span class="hud-unit">m</span>`;
+                    break;
+                case 'velocity':
+                    const vx = data.x || 0;
+                    const vy = data.y || 0;
+                    const vz = data.z || 0;
+                    const speedKmh = (Math.sqrt(vx * vx + vy * vy + vz * vz) * 3.6).toFixed(1);
+                    document.getElementById('speed').innerHTML = `${speedKmh}<span class="hud-unit">km/h</span>`;
+                    break;
+                case 'vehicle_mode':
+                    currentMode = (data.value || "rover").toUpperCase();
+                    updateModeUI();
+                    break;
+                case 'control_mode':
+                    isAuto = (data.value === 'auto');
+                    updateAutoUI();
+                    break;
+                case 'servo':
+                    if (document.getElementById('servo1')) document.getElementById('servo1').innerText = (data.servo1 || '90') + '°';
+                    if (document.getElementById('servo2')) document.getElementById('servo2').innerText = (data.servo2 || '90') + '°';
+                    break;
+                case 'cpu':
+                    if (document.getElementById('cpu')) document.getElementById('cpu').innerText = (data.value || 0) + '%';
+                    break;
+                case 'memory':
+                    if (document.getElementById('memory')) document.getElementById('memory').innerText = (data.value || 0) + '%';
+                    break;
+                case 'status':
+                    addLog('[ROBOT] ' + (data.text || ''), 'info');
+                    break;
+                case 'position':
+                    if (document.getElementById('posX')) document.getElementById('posX').innerText = data.x?.toFixed(1) || '0.0';
+                    if (document.getElementById('posY')) document.getElementById('posY').innerText = data.y?.toFixed(1) || '0.0';
+                    if (document.getElementById('posZ')) document.getElementById('posZ').innerText = data.z?.toFixed(1) || '0.0';
+                    break;
+            }
+        }
+
+        // ================= COMMANDS & INTERACTION =================
+        function sendCommand(cmd, value = null) {
+            if (!dataChannel || dataChannel.readyState !== 'open') {
+                addLog('Cannot send command: Connection not ready', 'error');
+                return;
+            }
+
+            let message = {};
+
+            if (value !== null) {
+                message = { type: cmd, value: value };
+            } else {
+                switch (cmd) {
+                    case 'arm':
+                        message = { type: 'arm', value: true };
+                        break;
+                    case 'disarm':
+                        message = { type: 'arm', value: false };
+                        break;
+                    case 'takeoff':
+                        message = { type: 'command', value: 'takeoff' };
+                        break;
+                    case 'land':
+                        message = { type: 'command', value: 'land' };
+                        break;
+                    case 'hover':
+                        message = { type: 'command', value: 'hover' };
+                        break;
+                    case 'return':
+                        message = { type: 'command', value: 'return' };
+                        break;
+                    case 'toggleMode':
+                        const targetMode = (currentMode === "ROVER" ? "drone" : "rover");
+                        message = { type: 'mode', value: targetMode };
+                        break;
+                    case 'toggleAuto':
+                        message = { type: 'control', value: (isAuto ? 'manual' : 'auto') };
+                        break;
+                    case 'power':
+                        // Use the current isPowerOn value to send true/false
+                        message = { type: 'power', value: isPowerOn };
+                        break;
+                    default:
+                        return;
+                }
+            }
+
+            dataChannel.send(JSON.stringify(message));
+            addLog('Sent ' + (message.type || cmd), 'info');
+        }
+
+        function toggleMode() {
+            currentMode = (currentMode === "ROVER" ? "DRONE" : "ROVER");
+            updateModeUI();
+            sendCommand('mode', currentMode.toLowerCase());
+        }
+
+        function toggleAuto() {
+            isAuto = !isAuto;
+            updateAutoUI();
+            sendCommand('control', isAuto ? 'auto' : 'manual');
+        }
+
+        function togglePower() {
+            isPowerOn = !isPowerOn;
+            const btn = document.getElementById('powerBtn');
+            btn.className = isPowerOn ? "pill-btn power-on" : "pill-btn power-off";
+            btn.innerText = isPowerOn ? "ON" : "OFF";
+            addLog('System Power: ' + (isPowerOn ? 'ON' : 'OFF'), 'info');
+            sendCommand('power', isPowerOn);
+        }
+
+        function emergencyStop() {
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'emergency' }));
+                addLog('🛑 EMERGENCY STOP SENT', 'error');
+            } else {
+                addLog('Cannot send emergency: Connection not ready', 'error');
+            }
+        }
+
+        function updateModeUI() {
+            const btn = document.getElementById('modeBtn');
+            const droneBtns = document.querySelectorAll('.drone-only');
+            const joystickArea = document.getElementById('joystickArea');
+            const rightBase = document.getElementById('rightBase');
+
+            if (currentMode === "ROVER") {
+                btn.className = "pill-btn mode-rover";
+                btn.innerText = "ROVER MODE";
+                droneBtns.forEach(b => b.style.display = 'none');
+                joystickArea.classList.add('center-mode');
+                rightBase.style.display = 'none';
+            } else {
+                btn.className = "pill-btn mode-drone";
+                btn.innerText = "DRONE MODE";
+                droneBtns.forEach(b => b.style.display = 'block');
+                joystickArea.classList.remove('center-mode');
+                rightBase.style.display = 'block';
+            }
+        }
+
+        function updateAutoUI() {
+            const btn = document.getElementById('autoBtn');
+            if (isAuto) {
+                btn.className = "pill-btn auto-on";
+                btn.innerText = "AUTONOMOUS";
+            } else {
+                btn.className = "pill-btn auto-off";
+                btn.innerText = "MANUAL";
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connDot');
+            const status = document.getElementById('connStatus');
+
+            if (connected) {
+                dot.classList.add('connected');
+                status.innerText = 'Connected';
+            } else {
+                dot.classList.remove('connected');
+                status.innerText = 'Disconnected';
+            }
+        }
+
+        function addLog(message, type = '') {
+            const logContainer = document.getElementById('logContainer');
+            if (!logContainer) return;
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            const time = new Date().toLocaleTimeString([], { hour12: false });
+            entry.innerText = `[${time}] ${message}`;
+            logContainer.prepend(entry);
+            while (logContainer.children.length > 20) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        // ================= JOYSTICK ENGINE =================
+        function initJoystick(base, stick, callback) {
+            let active = false;
+            let rect;
+
+            base.onpointerdown = (e) => {
+                active = true;
+                rect = base.getBoundingClientRect();
+                e.preventDefault();
+            };
+
+            window.addEventListener("pointermove", (e) => {
+                if (!active || !rect) return;
+
+                let x = e.clientX - rect.left - rect.width / 2;
+                let y = e.clientY - rect.top - rect.height / 2;
+                let max = rect.width / 2 - 25;
+
+                let dist = Math.hypot(x, y);
+                if (dist > max) {
+                    x *= max / dist;
+                    y *= max / dist;
+                }
+
+                stick.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+                callback(x / max, y / max);
+            });
+
+            window.addEventListener("pointerup", () => {
+                if (!active) return;
+                active = false;
+                stick.style.transform = "translate(-50%,-50%)";
+                callback(0, 0);
+            });
+        }
+
+        let lastSend = 0;
+        const SEND_INTERVAL = 50;
+
+        initJoystick(document.getElementById('leftBase'), document.getElementById('leftStick'), (x, y) => {
+            if (!dataChannel || dataChannel.readyState !== 'open') return;
+
+            const now = Date.now();
+            if (now - lastSend < SEND_INTERVAL && (x !== 0 || y !== 0)) return;
+            lastSend = now;
+
+            if (currentMode === "ROVER") {
+                dataChannel.send(JSON.stringify({
+                    type: 'joystick',
+                    mode: 'rover',
+                    throttle: -y,
+                    steering: x
+                }));
+            } else {
+                dataChannel.send(JSON.stringify({
+                    type: 'joystick',
+                    mode: 'drone',
+                    roll: x,
+                    pitch: -y
+                }));
+            }
+        });
+
+        initJoystick(document.getElementById('rightBase'), document.getElementById('rightStick'), (x, y) => {
+            if (!dataChannel || dataChannel.readyState !== 'open' || currentMode !== "DRONE") return;
+
+            const now = Date.now();
+            if (now - lastSend < SEND_INTERVAL && (x !== 0 || y !== 0)) return;
+            lastSend = now;
+
+            dataChannel.send(JSON.stringify({
+                type: 'joystick',
+                mode: 'drone',
+                yaw: x,
+                throttle: -y
+            }));
+        });
+
+        // ================= NETWORK HEARTBEAT =================
+        setInterval(() => {
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+            }
+        }, 2000);
+    </script>
+</body>
+
+</html>

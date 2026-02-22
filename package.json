@@ -1,0 +1,24 @@
+{
+  "name": "morphobot-control-station",
+  "version": "1.0.0",
+  "description": "Morphobot Control Station Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.morphobot.control",
+    "win": {
+      "target": "portable"
+    },
+    "files": [
+      "main.js",
+      "M4 Website.html"
+    ]
+  }
+}
