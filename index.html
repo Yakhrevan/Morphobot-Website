@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>MORPHOBOT - Hybrid Rover/Drone Control Station</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00d2ff">
     <style>
@@ -492,6 +492,8 @@
             .header {
                 height: 50px;
                 padding: 0 10px;
+                padding-left: max(10px, env(safe-area-inset-left));
+                padding-right: max(10px, env(safe-area-inset-right));
             }
 
             .logo {
@@ -519,6 +521,8 @@
             .hud-container {
                 top: 60px;
                 padding: 10px;
+                padding-left: max(10px, env(safe-area-inset-left));
+                padding-right: max(10px, env(safe-area-inset-right));
                 flex-direction: column;
                 justify-content: flex-start;
                 gap: 10px;
@@ -543,8 +547,9 @@
             .command-bar {
                 bottom: 10px;
                 padding: 8px 15px;
+                padding-bottom: max(8px, env(safe-area-inset-bottom));
                 gap: 8px;
-                width: 95%;
+                width: calc(100% - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
                 justify-content: center;
                 flex-wrap: wrap;
                 border-radius: 15px;
@@ -558,6 +563,8 @@
             .joystick-area {
                 bottom: 100px;
                 gap: 40px;
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
             }
 
             .joystick-base {
@@ -573,6 +580,28 @@
             .log-container {
                 width: 100% !important;
                 height: 80px !important;
+            }
+
+            /* Orientation Handle */
+            @media (orientation: landscape) {
+                .hud-container {
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    top: 55px;
+                    justify-content: space-between;
+                }
+
+                .side-panel {
+                    width: 48%;
+                }
+
+                .joystick-area {
+                    bottom: 80px;
+                }
+
+                .command-bar {
+                    bottom: 5px;
+                }
             }
         }
 
