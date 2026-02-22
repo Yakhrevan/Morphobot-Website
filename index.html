@@ -545,14 +545,15 @@
             }
 
             .command-bar {
-                bottom: 10px;
-                padding: 8px 15px;
-                padding-bottom: max(8px, env(safe-area-inset-bottom));
-                gap: 8px;
-                width: calc(100% - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
+                bottom: 8px;
+                padding: 6px 12px;
+                padding-bottom: max(6px, env(safe-area-inset-bottom));
+                gap: 6px;
+                width: auto;
+                max-width: calc(100% - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
                 justify-content: center;
                 flex-wrap: wrap;
-                border-radius: 15px;
+                border-radius: 12px;
             }
 
             .command-bar button {
@@ -584,23 +585,65 @@
 
             /* Orientation Handle */
             @media (orientation: landscape) {
+                .header {
+                    height: 40px;
+                }
+
+                .logo {
+                    font-size: 0.8rem;
+                }
+
+                .pill-btn,
+                .emergency-btn {
+                    padding: 4px 10px;
+                    font-size: 0.65rem;
+                }
+
                 .hud-container {
                     flex-direction: row;
                     flex-wrap: wrap;
-                    top: 55px;
+                    top: 45px;
                     justify-content: space-between;
+                    padding: 5px 10px;
                 }
 
                 .side-panel {
                     width: 48%;
+                    gap: 5px;
+                }
+
+                .hud-box {
+                    padding: 4px 8px;
+                }
+
+                .hud-title {
+                    font-size: 7px;
+                }
+
+                .hud-value {
+                    font-size: 11px;
                 }
 
                 .joystick-area {
-                    bottom: 80px;
+                    bottom: 65px;
+                }
+
+                .joystick-base {
+                    width: 90px;
+                    height: 90px;
+                }
+
+                .joystick-stick {
+                    width: 35px;
+                    height: 35px;
                 }
 
                 .command-bar {
-                    bottom: 5px;
+                    bottom: 4px;
+                }
+
+                .log-container {
+                    height: 60px !important;
                 }
             }
         }
