@@ -506,6 +506,7 @@
         </div>
 
         <div class="connection-status">
+            <button class="pill-btn mode-rover btn-mini" onclick="toggleFullScreen()">⛶ FULLSCREEN</button>
             <div class="status-dot" id="connDot"></div>
             <span id="connStatus">Disconnected</span>
             <button class="pill-btn mode-rover" onclick="openConnect()" style="margin-left: 10px;">Connect</button>
@@ -998,6 +999,18 @@
                 addLog('🛑 EMERGENCY STOP SENT', 'error');
             } else {
                 addLog('Cannot send emergency: Connection not ready', 'error');
+            }
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    addLog(`Error attempting to enable full-screen mode: ${err.message}`, 'error');
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
             }
         }
 
