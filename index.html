@@ -486,6 +486,109 @@
             color: white;
             flex: 1;
         }
+
+        /* ================= RESPONSIVE (MOBILE) ================= */
+        @media (max-width: 768px) {
+            .header {
+                height: 50px;
+                padding: 0 10px;
+            }
+
+            .logo {
+                font-size: 1rem;
+            }
+
+            .logo span {
+                display: none;
+            }
+
+            .mode-indicator {
+                gap: 5px;
+            }
+
+            .pill-btn {
+                padding: 5px 12px;
+                font-size: 0.7rem;
+            }
+
+            .emergency-btn {
+                padding: 5px 15px;
+                font-size: 0.7rem;
+            }
+
+            .hud-container {
+                top: 60px;
+                padding: 10px;
+                flex-direction: column;
+                justify-content: flex-start;
+                gap: 10px;
+                overflow-y: auto;
+                pointer-events: none;
+            }
+
+            .side-panel {
+                gap: 8px;
+                width: 100%;
+            }
+
+            .hud-box {
+                min-width: unset;
+                padding: 8px 12px;
+            }
+
+            .hud-value {
+                font-size: 14px;
+            }
+
+            .command-bar {
+                bottom: 10px;
+                padding: 8px 15px;
+                gap: 8px;
+                width: 95%;
+                justify-content: center;
+                flex-wrap: wrap;
+                border-radius: 15px;
+            }
+
+            .command-bar button {
+                font-size: 0.6rem !important;
+                padding: 4px 10px !important;
+            }
+
+            .joystick-area {
+                bottom: 100px;
+                gap: 40px;
+            }
+
+            .joystick-base {
+                width: 100px;
+                height: 100px;
+            }
+
+            .joystick-stick {
+                width: 40px;
+                height: 40px;
+            }
+
+            .log-container {
+                width: 100% !important;
+                height: 80px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .btn-mini {
+                display: none;
+            }
+
+            .logo {
+                font-size: 0.9rem;
+            }
+
+            .connection-status span {
+                display: none;
+            }
+        }
     </style>
 </head>
 
