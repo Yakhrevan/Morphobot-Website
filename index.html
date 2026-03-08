@@ -614,7 +614,6 @@
 
                 .side-panel {
                     width: 130px;
-                    /* Fixed width for HUD lists */
                     gap: 4px;
                     background: none;
                     border: none;
@@ -623,7 +622,6 @@
                 .hud-box {
                     padding: 3px 6px;
                     background: rgba(2, 6, 23, 0.4);
-                    /* More transparent */
                 }
 
                 .hud-title {
@@ -634,7 +632,6 @@
                     font-size: 10px;
                 }
 
-                /* Move Joysticks to bottom corners in landscape */
                 .joystick-area {
                     bottom: 10px;
                     left: 0;
@@ -647,7 +644,6 @@
                     gap: 0;
                 }
 
-                /* Force joysticks apart even in center-mode (Rover) for landscape visibility */
                 .joystick-area.center-mode #leftBase {
                     margin-left: 0;
                     margin-right: auto;
@@ -673,7 +669,6 @@
 
                 .log-container {
                     display: none;
-                    /* Hide logs in landscape to save critical space */
                 }
 
                 .connection-status {
@@ -870,13 +865,10 @@
     <div class="modal" id="connectModal">
         <div class="modal-content">
             <h2 style="color: var(--primary); margin-bottom: 20px;">🔌 Connect to Robot</h2>
-            <div style="text-align: left; margin-bottom: 5px; color: var(--primary); font-size: 0.8rem;">SERVER URL / IP
-            </div>
-            <input type="text" id="serverUrl" placeholder="e.g. 127.0.0.1:8080" value="127.0.0.1:8080">
-
+            <div style="text-align: left; margin-bottom: 5px; color: var(--primary); font-size: 0.8rem;">SERVER URL / IP</div>
+            <input type="text" id="serverUrl" placeholder="e.g. 192.168.1.100:8080" value="127.0.0.1:8080">
             <div style="text-align: left; margin-bottom: 5px; color: var(--primary); font-size: 0.8rem;">ROBOT ID</div>
             <input type="text" id="robotId" placeholder="robot-001" value="robot-001">
-
             <div class="modal-buttons">
                 <button class="connect-btn" onclick="connectRobot()">CONNECT</button>
                 <button class="cancel-btn" onclick="closeConnect()">CANCEL</button>
@@ -884,8 +876,6 @@
         </div>
     </div>
 
-
-    <!-- Replace the existing <script> block with this -->
     <script>
         // Register Service Worker for PWA status
         if ('serviceWorker' in navigator) {
@@ -903,6 +893,7 @@
         let isPowerOn = false;
         let telemetryData = {};
         let robotId = "robot-001";
+        let telemetryWs = null;     // Telemetry WebSocket
 
         // ================= CONNECTION MANAGEMENT =================
         function openConnect() {
@@ -923,9 +914,73 @@
 
             if (socket) socket.close();
             if (peerConnection) peerConnection.close();
+            if (telemetryWs) telemetryWs.close();
 
             connectSignaling(wsUrl);
+            connectTelemetry();
             closeConnect();
+        }
+
+        // ================= TELEMETRY WEBSOCKET (port 9010) =================
+        function connectTelemetry() {
+            const telemetryUrl = 'ws://' + window.location.hostname + ':9010';
+            telemetryWs = new WebSocket(telemetryUrl);
+
+            telemetryWs.onopen = () => {
+                addLog('[TELEMETRY] Connected to hub', 'info');
+                document.getElementById('dcStatus').innerText = 'TELEMETRY';
+                document.getElementById('dcStatus').style.color = 'var(--success)';
+            };
+
+            telemetryWs.onclose = () => {
+                addLog('[TELEMETRY] Disconnected, reconnecting...', 'warn');
+                document.getElementById('dcStatus').innerText = 'RECONNECT';
+                document.getElementById('dcStatus').style.color = 'var(--warning)';
+                setTimeout(connectTelemetry, 3000);
+            };
+
+            telemetryWs.onerror = (e) => {
+                addLog('[TELEMETRY] Error: ' + e.type, 'error');
+            };
+
+            telemetryWs.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    
+                    if (data.type === 'fc_telemetry') {
+                        updateHUD(data);
+                    } else if (data.type === 'fc_status') {
+                        addLog('[FC] ' + data.text, 'info');
+                    } else {
+                        handleTelemetry(data);
+                    }
+                } catch (err) {
+                    console.error('[TELEMETRY] Parse error:', err);
+                }
+            };
+        }
+
+        // ================= UPDATE HUD FROM TELEMETRY =================
+        function updateHUD(data) {
+            if (document.getElementById('armed'))
+                document.getElementById('armed').innerText = data.armed ? 'YES' : 'NO';
+            
+            if (document.getElementById('vehicleMode'))
+                document.getElementById('vehicleMode').innerText = data.mode || '--';
+            
+            if (document.getElementById('battery') && data.battery !== null && data.battery !== undefined)
+                document.getElementById('battery').innerHTML = `${data.battery.toFixed(0)}<span class="hud-unit">%</span>`;
+            
+            if (document.getElementById('altitude') && data.altitude !== null && data.altitude !== undefined)
+                document.getElementById('altitude').innerHTML = `${data.altitude.toFixed(1)}<span class="hud-unit">m</span>`;
+            
+            if (data.velocity) {
+                const vx = data.velocity.x || 0;
+                const vy = data.velocity.y || 0;
+                const vz = data.velocity.z || 0;
+                const speed = (Math.sqrt(vx*vx + vy*vy + vz*vz) * 3.6).toFixed(1);
+                document.getElementById('speed').innerHTML = `${speed}<span class="hud-unit">km/h</span>`;
+            }
         }
 
         // ================= SIGNALING & WEBRTC =================
@@ -986,7 +1041,6 @@
 
             peerConnection.addTransceiver('video', { direction: 'recvonly' });
 
-            // Setup Data Channel (operator creates it)
             dataChannel = peerConnection.createDataChannel('control');
             setupDataChannel(dataChannel);
 
@@ -994,11 +1048,9 @@
                 console.log('[WEBRTC] ontrack received', event);
                 const video = document.getElementById('videoStream');
 
-                // If streams are provided, use the first one
                 if (event.streams && event.streams.length > 0) {
                     video.srcObject = event.streams[0];
                 }
-                // Otherwise, create a new stream from the track
                 else if (event.track) {
                     console.log('[WEBRTC] Creating stream from track:', event.track.kind);
                     const stream = new MediaStream();
@@ -1006,10 +1058,8 @@
                     video.srcObject = stream;
                 }
 
-                // Optional: force play (autoplay should handle it)
                 video.play().catch(e => console.warn('[VIDEO] autoplay failed:', e));
 
-                // Hide overlay
                 const overlay = document.getElementById('videoOverlay');
                 overlay.style.opacity = '0';
                 setTimeout(() => overlay.style.display = 'none', 500);
@@ -1030,7 +1080,6 @@
                 updateConnectionStatus(state === 'connected');
             };
 
-            // Create Offer
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
@@ -1051,7 +1100,6 @@
                     dcStatus.style.color = 'var(--success)';
                 }
 
-                // SYNC INITIAL STATE: Send current UI defaults to Pi
                 addLog('[DATA] Syncing initial state...', 'info');
                 sendCommand('mode', currentMode.toLowerCase());
                 sendCommand('control', isAuto ? 'auto' : 'manual');
@@ -1131,6 +1179,9 @@
                     if (document.getElementById('posY')) document.getElementById('posY').innerText = data.y?.toFixed(1) || '0.0';
                     if (document.getElementById('posZ')) document.getElementById('posZ').innerText = data.z?.toFixed(1) || '0.0';
                     break;
+                case 'fc_telemetry':
+                    updateHUD(data);
+                    break;
             }
         }
 
@@ -1173,7 +1224,6 @@
                         message = { type: 'control', value: (isAuto ? 'manual' : 'auto') };
                         break;
                     case 'power':
-                        // Use the current isPowerOn value to send true/false
                         message = { type: 'power', value: isPowerOn };
                         break;
                     default:
